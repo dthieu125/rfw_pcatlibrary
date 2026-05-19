@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+build/
+dist/
+
+# Local/confidential reference material - do not publish.
+*.pdf
+pcat_usermanual.txt
+
+# Runtime output
+logs/
+dumps/
+output/
+report.html
+log.html
