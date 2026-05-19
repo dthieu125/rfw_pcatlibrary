@@ -12,6 +12,11 @@ import subprocess
 from pathlib import Path
 from typing import Any, Iterable
 
+from robot.api import logger
+
+
+PCAT_FLASH_SUCCESS_MARKERS = ["FLASH SUCCESS", "NO ERROR"]
+
 
 class PCATLibrary:
     """Robot Framework library for PCAT CLI workflows."""
@@ -25,11 +30,15 @@ class PCATLibrary:
         timeout: int | float = 600,
         dry_run: bool = False,
         check: bool = True,
+        flash_success_markers: str | Iterable[str] | None = None,
     ) -> None:
         self.pcat_path = str(pcat_path)
         self.timeout = float(timeout)
         self.dry_run = self._to_bool(dry_run)
         self.check = self._to_bool(check)
+        self.flash_success_markers = self._normalize_markers(
+            flash_success_markers if flash_success_markers is not None else PCAT_FLASH_SUCCESS_MARKERS
+        )
 
     def run_pcat(
         self,
@@ -519,6 +528,58 @@ class PCATLibrary:
         )
         return self.run_pcat(*args)
 
+    def flash_meta_build(
+        self,
+        device: str,
+        contents_xml: str,
+        memory_type: str = "UFS",
+        flavor: str = "asic",
+        reset: bool | str | None = True,
+        erase: bool | str | None = None,
+        slot: int | str | None = None,
+        validation_mode: int | str | None = None,
+        device_programmer: str | None = None,
+        cdt: str | None = None,
+        active_partition: str | None = None,
+        fetch_log: bool | str = True,
+        verify_success: bool | str = True,
+        success_markers: str | Iterable[str] | None = None,
+        device_type: str | None = None,
+    ) -> dict[str, Any]:
+        """Flash a PCAT meta build and optionally print/validate the resulting PCAT log.
+
+        The default success markers are stored in the module-level
+        ``PCAT_FLASH_SUCCESS_MARKERS`` variable and copied into each library instance.
+        """
+
+        result = self.download_build(
+            device,
+            contents_xml,
+            memory_type=memory_type,
+            flavor=flavor,
+            reset=reset,
+            erase=erase,
+            slot=slot,
+            validation_mode=validation_mode,
+            device_programmer=device_programmer,
+            cdt=cdt,
+            active_partition=active_partition,
+            device_type=device_type,
+        )
+        if self._to_bool(fetch_log):
+            result["pcat_log"] = self.fetch_pcat_log(result)
+        if self._to_bool(verify_success) and not result["dry_run"]:
+            log_text = result.get("pcat_log") or self._result_log(result)
+            verification = self.verify_flash_log_success(log_text, success_markers=success_markers)
+            result.update(
+                {
+                    "success": verification["success"],
+                    "success_markers": verification["required_markers"],
+                    "missing_success_markers": verification["missing_markers"],
+                }
+            )
+        return result
+
     def get_flash_info(
         self,
         device: str,
@@ -566,19 +627,88 @@ class PCATLibrary:
         provision_xml: str,
         memory_type: str = "UFS",
         flavor: str | None = None,
+        reset: bool | str | None = None,
+        fetch_log: bool | str = True,
+        verify_success: bool | str = False,
+        success_markers: str | Iterable[str] | None = None,
         device_type: str | None = None,
     ) -> dict[str, Any]:
-        """Perform UFS provisioning."""
+        """Perform UFS provisioning and optionally print/validate the resulting PCAT log."""
 
-        return self.download_build(
+        result = self.download_build(
             device,
             build,
             memory_type=memory_type,
             flavor=flavor,
+            reset=reset,
             ufs_provision=True,
             ufs_provision_xml=provision_xml,
             device_type=device_type,
         )
+        if self._to_bool(fetch_log):
+            result["pcat_log"] = self.fetch_pcat_log(result)
+        if self._to_bool(verify_success) and not result["dry_run"]:
+            log_text = result.get("pcat_log") or self._result_log(result)
+            verification = self.verify_flash_log_success(log_text, success_markers=success_markers)
+            result.update(
+                {
+                    "success": verification["success"],
+                    "success_markers": verification["required_markers"],
+                    "missing_success_markers": verification["missing_markers"],
+                }
+            )
+        return result
+
+    def fetch_pcat_log(self, source: dict[str, Any] | str | Path) -> str:
+        """Fetch PCAT log text from a command result or a log file path and print it to console."""
+
+        if isinstance(source, dict):
+            log_text = self._result_log(source)
+        else:
+            log_text = Path(source).read_text(encoding="utf-8", errors="replace")
+
+        if log_text.strip():
+            logger.console(log_text)
+        return log_text
+
+    def verify_flash_log_success(
+        self,
+        log_text: str,
+        success_markers: str | Iterable[str] | None = None,
+        case_sensitive: bool | str = False,
+    ) -> dict[str, Any]:
+        """Verify that a flash log contains all configured success markers."""
+
+        required_markers = self._normalize_markers(
+            success_markers if success_markers is not None else self.flash_success_markers
+        )
+        haystack = log_text if self._to_bool(case_sensitive) else log_text.upper()
+        missing_markers = [
+            marker
+            for marker in required_markers
+            if (marker if self._to_bool(case_sensitive) else marker.upper()) not in haystack
+        ]
+        if missing_markers:
+            raise AssertionError(
+                "PCAT flash log is missing success marker(s): "
+                + ", ".join(missing_markers)
+            )
+        return {
+            "success": True,
+            "required_markers": required_markers,
+            "missing_markers": missing_markers,
+        }
+
+    def set_flash_success_markers(self, *markers: str) -> list[str]:
+        """Set the success markers used by flash log verification."""
+
+        self.flash_success_markers = self._normalize_markers(markers)
+        return self.flash_success_markers
+
+    def get_flash_success_markers(self) -> list[str]:
+        """Return the success markers used by flash log verification."""
+
+        return list(self.flash_success_markers)
 
     def _run(
         self,
@@ -780,6 +910,20 @@ class PCATLibrary:
         if value is None or isinstance(value, str):
             return value
         return ";".join(str(item) for item in value)
+
+    @staticmethod
+    def _normalize_markers(markers: str | Iterable[str]) -> list[str]:
+        if isinstance(markers, str):
+            marker_items = markers.split("|") if "|" in markers else markers.split(",")
+        else:
+            marker_items = list(markers)
+        return [str(marker).strip() for marker in marker_items if str(marker).strip()]
+
+    @staticmethod
+    def _result_log(result: dict[str, Any]) -> str:
+        stdout = result.get("stdout") or ""
+        stderr = result.get("stderr") or ""
+        return "\n".join(part for part in (stdout, stderr) if part)
 
     @staticmethod
     def _to_bool(value: bool | str | int | None) -> bool:

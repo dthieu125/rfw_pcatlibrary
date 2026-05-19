@@ -1,4 +1,5 @@
 from PCATLibrary import PCATLibrary
+from PCATLibrary.pcat_library import PCAT_FLASH_SUCCESS_MARKERS
 
 
 def test_download_build_command_contains_expected_options():
@@ -91,3 +92,77 @@ def test_create_digest_joins_raw_and_patch_program_lists():
     assert result["command"][result["command"].index("-PATCHPROG") + 1] == (
         r"C:\build\patch0.xml;C:\build\patch1.xml"
     )
+
+
+def test_flash_meta_build_uses_software_download_plugin():
+    library = PCATLibrary(dry_run=True)
+
+    result = library.flash_meta_build(
+        "dev1",
+        r"C:\build\contents.xml",
+        memory_type="UFS",
+        flavor="asic",
+        reset=True,
+    )
+
+    assert result["command"] == [
+        "PCAT",
+        "-PLUGIN",
+        "SD",
+        "-DEVICE",
+        "dev1",
+        "-BUILD",
+        r"C:\build\contents.xml",
+        "-MEMORYTYPE",
+        "UFS",
+        "-FLAVOR",
+        "asic",
+        "-RESET",
+        "TRUE",
+    ]
+
+
+def test_ufs_provision_command_contains_provision_options():
+    library = PCATLibrary(dry_run=True)
+
+    result = library.ufs_provision(
+        "dev1",
+        r"C:\build",
+        r"C:\build\provision.xml",
+        flavor="asic",
+    )
+
+    assert result["command"] == [
+        "PCAT",
+        "-PLUGIN",
+        "SD",
+        "-DEVICE",
+        "dev1",
+        "-BUILD",
+        r"C:\build",
+        "-MEMORYTYPE",
+        "UFS",
+        "-FLAVOR",
+        "asic",
+        "-UFSPROV",
+        "TRUE",
+        "-UFSPROVXML",
+        r"C:\build\provision.xml",
+    ]
+
+
+def test_verify_flash_log_success_uses_global_default_markers():
+    library = PCATLibrary()
+
+    result = library.verify_flash_log_success("flash success\nno error")
+
+    assert result["required_markers"] == PCAT_FLASH_SUCCESS_MARKERS
+    assert result["success"] is True
+
+
+def test_set_flash_success_markers_accepts_multiple_values():
+    library = PCATLibrary()
+
+    markers = library.set_flash_success_markers("FLASH SUCCESS", "NO ERROR", "DONE")
+
+    assert markers == ["FLASH SUCCESS", "NO ERROR", "DONE"]
