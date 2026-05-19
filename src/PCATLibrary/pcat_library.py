@@ -13,11 +13,13 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from robot.api import logger
+from robot.api.deco import keyword, library
 
 
 PCAT_FLASH_SUCCESS_MARKERS = ["FLASH SUCCESS", "NO ERROR"]
 
 
+@library(scope="GLOBAL", version="0.1.0", auto_keywords=False)
 class PCATLibrary:
     """Robot Framework library for PCAT CLI workflows."""
 
@@ -40,6 +42,7 @@ class PCATLibrary:
             flash_success_markers if flash_success_markers is not None else PCAT_FLASH_SUCCESS_MARKERS
         )
 
+    @keyword("Run PCAT")
     def run_pcat(
         self,
         *args: Any,
@@ -57,11 +60,13 @@ class PCATLibrary:
         command = [self.pcat_path, *self._normalize_args(args)]
         return self._run(command, timeout=timeout, check=check, dry_run=dry_run)
 
+    @keyword("Get Version")
     def get_version(self) -> dict[str, Any]:
         """Display PCAT version information."""
 
         return self.run_pcat("-VERSION")
 
+    @keyword("Show Help")
     def show_help(self, plugin: str | None = None) -> dict[str, Any]:
         """Show PCAT help, optionally for a plugin name or ID."""
 
@@ -70,36 +75,43 @@ class PCATLibrary:
             args.extend(["-PLUGIN", plugin])
         return self.run_pcat(*args)
 
+    @keyword("List Plugins")
     def list_plugins(self) -> dict[str, Any]:
         """List licensed PCAT plugins or add-ons."""
 
         return self.run_pcat("-PLUGINS")
 
+    @keyword("List Devices")
     def list_devices(self) -> dict[str, Any]:
         """List available Qualcomm devices on the machine."""
 
         return self.run_pcat("-DEVICES")
 
+    @keyword("List Protocols")
     def list_protocols(self, device: str) -> dict[str, Any]:
         """List available protocols on a device."""
 
         return self.run_pcat("-PROTOCOLS", "-DEVICE", device)
 
+    @keyword("Reset Device")
     def reset_device(self, device: str) -> dict[str, Any]:
         """Reset a device."""
 
         return self._device_mode("RESET", device)
 
+    @keyword("Crash Device")
     def crash_device(self, device: str) -> dict[str, Any]:
         """Crash a device."""
 
         return self._device_mode("CRASH", device)
 
+    @keyword("Force EDL")
     def force_edl(self, device: str) -> dict[str, Any]:
         """Force a device to EDL mode."""
 
         return self._device_mode("EDL", device)
 
+    @keyword("Monitor Memory Dump")
     def monitor_memory_dump(
         self,
         dump_dir: str | None = None,
@@ -118,6 +130,7 @@ class PCATLibrary:
         self._add_optional_bool(args, "-UNIQUETS", unique_timestamp)
         return self.run_pcat(*args)
 
+    @keyword("Collect Memory Dump")
     def collect_memory_dump(
         self,
         device: str,
@@ -138,6 +151,7 @@ class PCATLibrary:
         self._add_optional_bool(args, "-UNIQUETS", unique_timestamp)
         return self.run_pcat(*args)
 
+    @keyword("Backup XQCN")
     def backup_xqcn(
         self,
         device: str,
@@ -157,6 +171,7 @@ class PCATLibrary:
             device_type=device_type,
         )
 
+    @keyword("Restore XQCN")
     def restore_xqcn(
         self,
         device: str,
@@ -188,6 +203,7 @@ class PCATLibrary:
             device_type=device_type,
         )
 
+    @keyword("Backup CEFS")
     def backup_cefs(
         self,
         device: str,
@@ -206,6 +222,7 @@ class PCATLibrary:
             device_type=device_type,
         )
 
+    @keyword("List EFS")
     def list_efs(
         self,
         device: str,
@@ -220,6 +237,7 @@ class PCATLibrary:
         args.extend(["-VIEW", view, "-VALUE", value])
         return self.run_pcat(*args)
 
+    @keyword("Create EFS Directory")
     def create_efs_directory(
         self,
         device: str,
@@ -231,6 +249,7 @@ class PCATLibrary:
 
         return self._efs_action(device, "CREATE", "DIR", file_system, value=path, device_type=device_type)
 
+    @keyword("Create EFS File")
     def create_efs_file(
         self,
         device: str,
@@ -251,6 +270,7 @@ class PCATLibrary:
             device_type=device_type,
         )
 
+    @keyword("Copy File To EFS")
     def copy_file_to_efs(
         self,
         device: str,
@@ -273,6 +293,7 @@ class PCATLibrary:
             device_type=device_type,
         )
 
+    @keyword("Copy File From EFS")
     def copy_file_from_efs(
         self,
         device: str,
@@ -295,6 +316,7 @@ class PCATLibrary:
             device_type=device_type,
         )
 
+    @keyword("Delete EFS Path")
     def delete_efs_path(
         self,
         device: str,
@@ -316,6 +338,7 @@ class PCATLibrary:
             device_type=device_type,
         )
 
+    @keyword("List MBN")
     def list_mbn(
         self,
         device: str,
@@ -334,6 +357,7 @@ class PCATLibrary:
         self._add_optional_bool(args, "-OVERDIAG", over_diag)
         return self.run_pcat(*args)
 
+    @keyword("Select MBN")
     def select_mbn(
         self,
         device: str,
@@ -345,6 +369,7 @@ class PCATLibrary:
 
         return self._mbn_mode(device, "SEL", mbn_id, subscription, device_type)
 
+    @keyword("Activate MBN")
     def activate_mbn(
         self,
         device: str,
@@ -356,6 +381,7 @@ class PCATLibrary:
 
         return self._mbn_mode(device, "ACT", mbn_id, subscription, device_type)
 
+    @keyword("Deactivate MBN")
     def deactivate_mbn(
         self,
         device: str,
@@ -367,6 +393,7 @@ class PCATLibrary:
 
         return self._mbn_mode(device, "DEACT", mbn_id, subscription, device_type)
 
+    @keyword("Load MBN")
     def load_mbn(self, device: str, mbn_path: str, device_type: str | None = None) -> dict[str, Any]:
         """Load an MBN file to the device."""
 
@@ -374,6 +401,7 @@ class PCATLibrary:
         args.extend(["-LOAD", mbn_path])
         return self.run_pcat(*args)
 
+    @keyword("Remove MBN")
     def remove_mbn(self, device: str, mbn_id: str, device_type: str | None = None) -> dict[str, Any]:
         """Remove an MBN item from the device."""
 
@@ -381,6 +409,7 @@ class PCATLibrary:
         args.extend(["-REMOVE", mbn_id])
         return self.run_pcat(*args)
 
+    @keyword("Read NV Item")
     def read_nv_item(
         self,
         device: str,
@@ -393,6 +422,7 @@ class PCATLibrary:
         args = self._nv_base(device, "READ", nv_item, subscription, device_type)
         return self.run_pcat(*args)
 
+    @keyword("Write NV Item")
     def write_nv_item(
         self,
         device: str,
@@ -409,6 +439,7 @@ class PCATLibrary:
         args.extend(["-VALUE", value])
         return self.run_pcat(*args)
 
+    @keyword("Flatten Meta Build")
     def flatten_meta_build(
         self,
         build: str,
@@ -433,6 +464,7 @@ class PCATLibrary:
         self._add_optional(args, "-DEVICEPROG", device_programmer)
         return self.run_pcat(*args)
 
+    @keyword("Create Digest")
     def create_digest(
         self,
         build: str,
@@ -463,6 +495,7 @@ class PCATLibrary:
         args.extend(["-OUT", out_dir])
         return self.run_pcat(*args)
 
+    @keyword("Download Build")
     def download_build(
         self,
         device: str,
@@ -528,6 +561,7 @@ class PCATLibrary:
         )
         return self.run_pcat(*args)
 
+    @keyword("Flash Meta Build")
     def flash_meta_build(
         self,
         device: str,
@@ -541,6 +575,7 @@ class PCATLibrary:
         device_programmer: str | None = None,
         cdt: str | None = None,
         active_partition: str | None = None,
+        flatten: bool | str | None = None,
         fetch_log: bool | str = True,
         verify_success: bool | str = True,
         success_markers: str | Iterable[str] | None = None,
@@ -564,6 +599,7 @@ class PCATLibrary:
             device_programmer=device_programmer,
             cdt=cdt,
             active_partition=active_partition,
+            flatten=flatten,
             device_type=device_type,
         )
         if self._to_bool(fetch_log):
@@ -580,6 +616,7 @@ class PCATLibrary:
             )
         return result
 
+    @keyword("Get Flash Info")
     def get_flash_info(
         self,
         device: str,
@@ -599,6 +636,7 @@ class PCATLibrary:
         args.extend(["-FLASHINFO", "TRUE"])
         return self.run_pcat(*args)
 
+    @keyword("Read Images")
     def read_images(
         self,
         device: str,
@@ -620,6 +658,7 @@ class PCATLibrary:
             device_type=device_type,
         )
 
+    @keyword("UFS Provision")
     def ufs_provision(
         self,
         device: str,
@@ -659,6 +698,7 @@ class PCATLibrary:
             )
         return result
 
+    @keyword("Fetch PCAT Log")
     def fetch_pcat_log(self, source: dict[str, Any] | str | Path) -> str:
         """Fetch PCAT log text from a command result or a log file path and print it to console."""
 
@@ -671,6 +711,7 @@ class PCATLibrary:
             logger.console(log_text)
         return log_text
 
+    @keyword("Verify Flash Log Success")
     def verify_flash_log_success(
         self,
         log_text: str,
@@ -699,12 +740,14 @@ class PCATLibrary:
             "missing_markers": missing_markers,
         }
 
+    @keyword("Set Flash Success Markers")
     def set_flash_success_markers(self, *markers: str) -> list[str]:
         """Set the success markers used by flash log verification."""
 
         self.flash_success_markers = self._normalize_markers(markers)
         return self.flash_success_markers
 
+    @keyword("Get Flash Success Markers")
     def get_flash_success_markers(self) -> list[str]:
         """Return the success markers used by flash log verification."""
 

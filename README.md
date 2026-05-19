@@ -16,6 +16,8 @@ automation workflows:
 
 > This repository intentionally does not include the PCAT user manual or extracted manual text.
 
+Only methods explicitly decorated with `@keyword` are exposed as Robot Framework keywords.
+
 ## Install
 
 ```powershell
@@ -24,6 +26,22 @@ python -m pip install -e .
 
 PCAT CLI must be installed on the test machine and callable as `PCAT`, or you can pass an
 explicit executable path through `pcat_path`.
+
+## Build A Pip Package
+
+On Windows, run:
+
+```bat
+build_package.bat
+```
+
+The script creates a wheel and source distribution under `dist`. Install the wheel with:
+
+```powershell
+python -m pip install .\dist\robotframework_pcatlibrary-0.1.0-py3-none-any.whl
+```
+
+If the version changes, use the wheel name printed by `build_package.bat`.
 
 ## Robot Framework Usage
 
@@ -69,6 +87,40 @@ Flash Meta Build Successfully
     ...    reset=${TRUE}
     Should Be True    ${result.success}
 ```
+
+## PCAT CLI Notes
+
+You do not need to pass every Software Download option on the CLI. PCAT defines defaults for
+several options, including `RESET=true`, `SKIPSAHARA=false`, `ERASE=true`,
+`READIMAGES=false`, `VALDMODE=0`, `UFSPROV=false`, `SLOT=0`, `FLATTEN=true`, and
+`FLASHINFO=false`.
+
+The GUI setting `Build Download Type = FIREHOSE` does not appear as a required option in the
+standard Software Download CLI examples. The normal `PCAT -PLUGIN SD ...` flow uses Firehose
+for these examples. Fastboot is a separate workflow in the manual.
+
+When the GUI option `Use meta images for download` is unchecked, PCAT flattens the meta build
+before download. On the CLI this corresponds to `-FLATTEN TRUE`; because PCAT documents
+`FLATTEN` as defaulting to `true`, `Flash Meta Build` normally does not need an explicit
+`flatten` argument. Set `flatten=${TRUE}` if you want to force the flag in the generated
+command.
+
+For the GUI option `Load CDT image during download`, pass the `cdt` argument:
+
+```robot
+${result}=    Flash Meta Build
+...    ${DEVICE}
+...    C:\\build\\contents.xml
+...    memory_type=UFS
+...    flavor=asic
+...    cdt=C:\\build\\cdt.bin
+```
+
+For meta build downloads using `contents.xml`, PCAT is expected to resolve the device
+programmer, rawprogram XMLs, and patch XMLs from the meta build plus `MEMORYTYPE` and
+`FLAVOR`. The CLI examples for meta build download do not pass `-DEVICEPROG`, `-RAWPROG`, or
+`-PATCHPROG`. Use those arguments only when you need to override PCAT's selection or when
+working with flat/custom build layouts.
 
 The default success markers are defined in code as:
 

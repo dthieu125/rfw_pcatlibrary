@@ -122,6 +122,14 @@ def test_flash_meta_build_uses_software_download_plugin():
     ]
 
 
+def test_flash_meta_build_can_force_flatten_flag():
+    library = PCATLibrary(dry_run=True)
+
+    result = library.flash_meta_build("dev1", r"C:\build\contents.xml", flatten=True)
+
+    assert result["command"][result["command"].index("-FLATTEN") + 1] == "TRUE"
+
+
 def test_ufs_provision_command_contains_provision_options():
     library = PCATLibrary(dry_run=True)
 

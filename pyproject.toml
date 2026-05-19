@@ -11,7 +11,7 @@ requires-python = ">=3.10"
 authors = [
   { name = "PCAT Library Maintainers" }
 ]
-license = { text = "MIT" }
+license = "MIT"
 keywords = ["robotframework", "pcat", "qualcomm", "automation", "cli"]
 classifiers = [
   "Framework :: Robot Framework",
