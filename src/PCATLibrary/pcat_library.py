@@ -18,6 +18,44 @@ from robot.api.deco import keyword, library
 
 PCAT_FLASH_SUCCESS_MARKERS = ["FLASH SUCCESS", "NO ERROR"]
 
+DOWNLOAD_OPTION_FLAGS = {
+    "reset": ("-RESET", True),
+    "device_programmer": ("-DEVICEPROG", False),
+    "skip_sahara": ("-SKIPSAHARA", True),
+    "erase": ("-ERASE", True),
+    "read_images": ("-READIMAGES", True),
+    "read_image_path": ("-READIMAGEPATH", False),
+    "remote_efs_path": ("-REMOTEEFSPATH", False),
+    "validation_mode": ("-VALDMODE", False),
+    "chained_digest": ("-CHAINEDDIGEST", False),
+    "signed_digest": ("-SIGNEDDIGEST", False),
+    "ufs_provision": ("-UFSPROV", True),
+    "ufs_provision_xml": ("-UFSPROVXML", False),
+    "send_xml": ("-SENDXML", False),
+    "raw_program": ("-RAWPROG", False),
+    "patch_program": ("-PATCHPROG", False),
+    "slot": ("-SLOT", False),
+    "flatten": ("-FLATTEN", True),
+    "flash_info": ("-FLASHINFO", True),
+    "firehose_init_time": ("-FHINITTIME", False),
+    "cdt": ("-CDT", False),
+    "active_partition": ("-ACTIVEPARTITION", False),
+    "firehose_rx_timeout": ("-FHRXTIMEOUT", False),
+    "partition_index": ("-PARTITIONINDEX", False),
+}
+
+PCAT_SOFTWARE_DOWNLOAD_DEFAULTS = {
+    "reset": True,
+    "skip_sahara": False,
+    "erase": True,
+    "read_images": False,
+    "validation_mode": 0,
+    "ufs_provision": False,
+    "slot": 0,
+    "flatten": True,
+    "flash_info": False,
+}
+
 
 @library(scope="GLOBAL", version="0.1.0", auto_keywords=False)
 class PCATLibrary:
@@ -502,32 +540,23 @@ class PCATLibrary:
         build: str,
         memory_type: str | None = None,
         flavor: str | None = None,
-        reset: bool | str | None = None,
-        device_programmer: str | None = None,
-        skip_sahara: bool | str | None = None,
-        erase: bool | str | None = None,
-        read_images: bool | str | None = None,
-        read_image_path: str | None = None,
-        remote_efs_path: str | None = None,
-        validation_mode: int | str | None = None,
-        chained_digest: str | None = None,
-        signed_digest: str | None = None,
-        ufs_provision: bool | str | None = None,
-        ufs_provision_xml: str | None = None,
-        send_xml: str | None = None,
-        raw_program: str | Iterable[str] | None = None,
-        patch_program: str | Iterable[str] | None = None,
-        slot: int | str | None = None,
-        flatten: bool | str | None = None,
-        flash_info: bool | str | None = None,
-        firehose_init_time: int | str | None = None,
-        cdt: str | None = None,
-        active_partition: str | None = None,
-        firehose_rx_timeout: int | str | None = None,
-        partition_index: str | None = None,
         device_type: str | None = None,
+        **options: Any,
     ) -> dict[str, Any]:
-        """Download a meta, flat, or flashless build using Software Download plugin."""
+        """Download a meta, flat, or flashless build using Software Download plugin.
+
+        PCAT documents defaults for several Software Download options, so this keyword keeps
+        only the common arguments in its signature. Optional overrides can still be passed as
+        named arguments: reset, device_programmer, skip_sahara, erase, read_images,
+        read_image_path, remote_efs_path, validation_mode, chained_digest, signed_digest,
+        ufs_provision, ufs_provision_xml, send_xml, raw_program, patch_program, slot, flatten,
+        flash_info, firehose_init_time, cdt, active_partition, firehose_rx_timeout, and
+        partition_index.
+
+        Documented PCAT defaults include reset=True, skip_sahara=False, erase=True,
+        read_images=False, validation_mode=0, ufs_provision=False, slot=0, flatten=True, and
+        flash_info=False.
+        """
 
         args = self._plugin_args("SD", device, device_type)
         args.extend(["-BUILD", build])
@@ -535,29 +564,7 @@ class PCATLibrary:
             args,
             memory_type=memory_type,
             flavor=flavor,
-            reset=reset,
-            device_programmer=device_programmer,
-            skip_sahara=skip_sahara,
-            erase=erase,
-            read_images=read_images,
-            read_image_path=read_image_path,
-            remote_efs_path=remote_efs_path,
-            validation_mode=validation_mode,
-            chained_digest=chained_digest,
-            signed_digest=signed_digest,
-            ufs_provision=ufs_provision,
-            ufs_provision_xml=ufs_provision_xml,
-            send_xml=send_xml,
-            raw_program=raw_program,
-            patch_program=patch_program,
-            slot=slot,
-            flatten=flatten,
-            flash_info=flash_info,
-            firehose_init_time=firehose_init_time,
-            cdt=cdt,
-            active_partition=active_partition,
-            firehose_rx_timeout=firehose_rx_timeout,
-            partition_index=partition_index,
+            **options,
         )
         return self.run_pcat(*args)
 
@@ -568,39 +575,31 @@ class PCATLibrary:
         contents_xml: str,
         memory_type: str = "UFS",
         flavor: str = "asic",
-        reset: bool | str | None = True,
-        erase: bool | str | None = None,
-        slot: int | str | None = None,
-        validation_mode: int | str | None = None,
-        device_programmer: str | None = None,
         cdt: str | None = None,
-        active_partition: str | None = None,
-        flatten: bool | str | None = None,
         fetch_log: bool | str = True,
         verify_success: bool | str = True,
         success_markers: str | Iterable[str] | None = None,
         device_type: str | None = None,
+        **options: Any,
     ) -> dict[str, Any]:
         """Flash a PCAT meta build and optionally print/validate the resulting PCAT log.
 
         The default success markers are stored in the module-level
         ``PCAT_FLASH_SUCCESS_MARKERS`` variable and copied into each library instance.
+        Optional PCAT Software Download overrides can be passed as named arguments, for
+        example reset, erase, slot, validation_mode, device_programmer, active_partition, and
+        flatten. PCAT defaults include reset=True, erase=True, slot=0, validation_mode=0, and
+        flatten=True.
         """
 
+        options = self._merge_download_options(options, cdt=cdt)
         result = self.download_build(
             device,
             contents_xml,
             memory_type=memory_type,
             flavor=flavor,
-            reset=reset,
-            erase=erase,
-            slot=slot,
-            validation_mode=validation_mode,
-            device_programmer=device_programmer,
-            cdt=cdt,
-            active_partition=active_partition,
-            flatten=flatten,
             device_type=device_type,
+            **options,
         )
         if self._to_bool(fetch_log):
             result["pcat_log"] = self.fetch_pcat_log(result)
@@ -666,23 +665,32 @@ class PCATLibrary:
         provision_xml: str,
         memory_type: str = "UFS",
         flavor: str | None = None,
-        reset: bool | str | None = None,
         fetch_log: bool | str = True,
         verify_success: bool | str = False,
         success_markers: str | Iterable[str] | None = None,
         device_type: str | None = None,
+        **options: Any,
     ) -> dict[str, Any]:
-        """Perform UFS provisioning and optionally print/validate the resulting PCAT log."""
+        """Perform UFS provisioning and optionally print/validate the resulting PCAT log.
 
+        Optional Software Download overrides can be passed as named arguments, for example
+        reset, erase, slot, device_programmer, and firehose_rx_timeout. PCAT defaults include
+        reset=True, erase=True, slot=0, and ufs_provision=False; this keyword sets
+        ufs_provision=True and ufs_provision_xml=<provision_xml> for you.
+        """
+
+        options = self._merge_download_options(
+            options,
+            ufs_provision=True,
+            ufs_provision_xml=provision_xml,
+        )
         result = self.download_build(
             device,
             build,
             memory_type=memory_type,
             flavor=flavor,
-            reset=reset,
-            ufs_provision=True,
-            ufs_provision_xml=provision_xml,
             device_type=device_type,
+            **options,
         )
         if self._to_bool(fetch_log):
             result["pcat_log"] = self.fetch_pcat_log(result)
@@ -891,41 +899,33 @@ class PCATLibrary:
         return args
 
     def _add_download_options(self, args: list[Any], **options: Any) -> None:
-        mapping = [
-            ("-MEMORYTYPE", "memory_type", False),
-            ("-FLAVOR", "flavor", False),
-            ("-RESET", "reset", True),
-            ("-DEVICEPROG", "device_programmer", False),
-            ("-SKIPSAHARA", "skip_sahara", True),
-            ("-ERASE", "erase", True),
-            ("-READIMAGES", "read_images", True),
-            ("-READIMAGEPATH", "read_image_path", False),
-            ("-REMOTEEFSPATH", "remote_efs_path", False),
-            ("-VALDMODE", "validation_mode", False),
-            ("-CHAINEDDIGEST", "chained_digest", False),
-            ("-SIGNEDDIGEST", "signed_digest", False),
-            ("-UFSPROV", "ufs_provision", True),
-            ("-UFSPROVXML", "ufs_provision_xml", False),
-            ("-SENDXML", "send_xml", False),
-            ("-RAWPROG", "raw_program", False),
-            ("-PATCHPROG", "patch_program", False),
-            ("-SLOT", "slot", False),
-            ("-FLATTEN", "flatten", True),
-            ("-FLASHINFO", "flash_info", True),
-            ("-FHINITTIME", "firehose_init_time", False),
-            ("-CDT", "cdt", False),
-            ("-ACTIVEPARTITION", "active_partition", False),
-            ("-FHRXTIMEOUT", "firehose_rx_timeout", False),
-            ("-PARTITIONINDEX", "partition_index", False),
-        ]
-        for flag, key, is_bool in mapping:
-            value = options[key]
+        unknown_options = sorted(set(options) - {"memory_type", "flavor"} - set(DOWNLOAD_OPTION_FLAGS))
+        if unknown_options:
+            raise ValueError(
+                "Unknown Software Download option(s): "
+                + ", ".join(unknown_options)
+                + ". Supported options are: "
+                + ", ".join(sorted(DOWNLOAD_OPTION_FLAGS))
+            )
+
+        self._add_optional(args, "-MEMORYTYPE", options.get("memory_type"))
+        self._add_optional(args, "-FLAVOR", options.get("flavor"))
+        for key, (flag, is_bool) in DOWNLOAD_OPTION_FLAGS.items():
+            value = options.get(key)
             if key in {"raw_program", "patch_program"}:
                 value = self._join_paths(value)
             if is_bool:
                 self._add_optional_bool(args, flag, value)
             else:
                 self._add_optional(args, flag, value)
+
+    @staticmethod
+    def _merge_download_options(options: dict[str, Any], **overrides: Any) -> dict[str, Any]:
+        merged = dict(options)
+        for key, value in overrides.items():
+            if value is not None:
+                merged[key] = value
+        return merged
 
     @staticmethod
     def _add_optional(args: list[Any], flag: str, value: Any) -> None:

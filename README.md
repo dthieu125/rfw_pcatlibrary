@@ -95,6 +95,46 @@ several options, including `RESET=true`, `SKIPSAHARA=false`, `ERASE=true`,
 `READIMAGES=false`, `VALDMODE=0`, `UFSPROV=false`, `SLOT=0`, `FLATTEN=true`, and
 `FLASHINFO=false`.
 
+The library follows that behavior: `Download Build`, `Flash Meta Build`, and `UFS Provision`
+keep their signatures short and only include the most common arguments. Less common PCAT
+Software Download options can still be passed as named arguments when needed:
+
+- `reset`
+- `device_programmer`
+- `skip_sahara`
+- `erase`
+- `read_images`
+- `read_image_path`
+- `remote_efs_path`
+- `validation_mode`
+- `chained_digest`
+- `signed_digest`
+- `ufs_provision`
+- `ufs_provision_xml`
+- `send_xml`
+- `raw_program`
+- `patch_program`
+- `slot`
+- `flatten`
+- `flash_info`
+- `firehose_init_time`
+- `cdt`
+- `active_partition`
+- `firehose_rx_timeout`
+- `partition_index`
+
+Example:
+
+```robot
+${result}=    Download Build
+...    ${DEVICE}
+...    C:\\build\\contents.xml
+...    memory_type=UFS
+...    flavor=asic
+...    slot=1
+...    validation_mode=1
+```
+
 The GUI setting `Build Download Type = FIREHOSE` does not appear as a required option in the
 standard Software Download CLI examples. The normal `PCAT -PLUGIN SD ...` flow uses Firehose
 for these examples. Fastboot is a separate workflow in the manual.

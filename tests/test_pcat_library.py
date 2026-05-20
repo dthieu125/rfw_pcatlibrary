@@ -1,3 +1,5 @@
+import inspect
+
 from PCATLibrary import PCATLibrary
 from PCATLibrary.pcat_library import PCAT_FLASH_SUCCESS_MARKERS
 
@@ -32,6 +34,15 @@ def test_download_build_command_contains_expected_options():
         "-SLOT",
         "1",
     ]
+
+
+def test_download_build_signature_keeps_pcat_defaults_out_of_main_args():
+    parameters = inspect.signature(PCATLibrary.download_build).parameters
+
+    assert "reset" not in parameters
+    assert "erase" not in parameters
+    assert "slot" not in parameters
+    assert "options" in parameters
 
 
 def test_restore_multiple_xqcn_joins_paths_and_sets_flag():
